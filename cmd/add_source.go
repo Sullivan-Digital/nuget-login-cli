@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"nuget-login-cli/nuget"
 
@@ -18,14 +19,15 @@ var addSourceCmd = &cobra.Command{
 	Long:  "Add nuget source to the specified config file, or default if not specified",
 	Args:  cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
-		var configPath = nuget.GetNugetConfigPath(Target)
+		var configPath = nuget.GetNugetConfigPath(Target, Verbose)
+		fmt.Printf("Using config file: %s\n", configPath)
 
 		var err error
 		var name string
 		var sourceUrl string
 		if len(args) == 1 {
 			sourceUrl = args[0]
-			name, err = nuget.GetNameForNugetSource(configPath, sourceUrl)
+			name, err = nuget.GetNameForNugetSource(configPath, sourceUrl, Verbose)
 			if err != nil {
 				log.Fatalf("Error getting name for source: %s", err)
 			}
@@ -34,10 +36,22 @@ var addSourceCmd = &cobra.Command{
 			sourceUrl = args[1]
 		}
 
-		nuget.AddSourceToNugetConfig(configPath, name, sourceUrl)
+		fmt.Printf("Adding source %s to %s..\n", name, sourceUrl)
+		err = nuget.AddSourceToNugetConfig(configPath, name, sourceUrl, Verbose)
+		if err != nil {
+			log.Fatalf("Error adding source: %s", err)
+		}
 
 		if username != "" && password != "" {
-			nuget.AddPackageSourceCredentialsToNugetConfig(configPath, name, username, password)
+			fmt.Printf("Adding package source credentials for %s..\n", name)
+			err = nuget.AddPackageSourceCredentialsToNugetConfig(configPath, name, username, password, Verbose)
+			if err != nil {
+				log.Fatalf("Error adding package source credentials: %s", err)
+			}
+
+			fmt.Printf("Successfully added source and credentials for %s to %s\n", name, sourceUrl)
+		} else {
+			fmt.Printf("Successfully added source %s to %s\n", name, sourceUrl)
 		}
 	},
 }

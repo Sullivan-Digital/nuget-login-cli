@@ -1,6 +1,7 @@
 package nuget
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -11,13 +12,19 @@ import (
 
 const defaultNugetConfigFileName = "NuGet.config"
 
-func isPointingToFile(hint string) bool {
+func isPointingToFile(hint string, verbose bool) bool {
+	if verbose {
+		fmt.Println("Checking if hint points to a file:", hint)
+	}
 	if hint == "" {
 		return false
 	}
 
 	s, err := os.Stat(hint)
 	if err == nil {
+		if verbose {
+			fmt.Println("Hint is a file:", !s.IsDir())
+		}
 		return !s.IsDir()
 	}
 
@@ -28,19 +35,25 @@ func isPointingToFile(hint string) bool {
 	return filepath.Ext(hint) != ""
 }
 
-func GetNugetConfigPath(hint string) string {
+func GetNugetConfigPath(hint string, verbose bool) string {
+	if verbose {
+		fmt.Println("Getting NuGet config path with hint:", hint)
+	}
 	if hint == "" {
-		return getDefaultNugetConfigPath()
+		return getDefaultNugetConfigPath(verbose)
 	}
 
-	if isPointingToFile(hint) {
+	if isPointingToFile(hint, verbose) {
 		return hint
 	}
 
 	return filepath.Join(hint, defaultNugetConfigFileName)
 }
 
-func getDefaultNugetConfigPath() string {
+func getDefaultNugetConfigPath(verbose bool) string {
+	if verbose {
+		fmt.Println("Getting default NuGet config path")
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
@@ -54,7 +67,7 @@ func getDefaultNugetConfigPath() string {
 		filepath.Join(home, ".nuget", "NuGet", "NuGet.config"),
 	}
 
-	found := firstFilepathThatExists(paths...)
+	found := firstFilepathThatExists(verbose, paths...)
 	if found != "" {
 		return found
 	}
@@ -62,9 +75,15 @@ func getDefaultNugetConfigPath() string {
 	return defaultPath
 }
 
-func firstFilepathThatExists(paths ...string) string {
+func firstFilepathThatExists(verbose bool, paths ...string) string {
+	if verbose {
+		fmt.Println("Checking for first existing filepath in paths:", paths)
+	}
 	for _, path := range paths {
 		if _, err := os.Stat(path); err == nil {
+			if verbose {
+				fmt.Println("Found existing filepath:", path)
+			}
 			return path
 		}
 	}
@@ -72,10 +91,13 @@ func firstFilepathThatExists(paths ...string) string {
 	return ""
 }
 
-func GetNameForNugetSource(filePath string, urlOrName string) (string, error) {
-	doc, err := readNugetConfig(filePath)
+func GetNameForNugetSource(filePath string, urlOrName string, verbose bool) (string, error) {
+	if verbose {
+		fmt.Println("Getting name for NuGet source from file:", filePath, "with URL or name:", urlOrName)
+	}
+	doc, err := readNugetConfig(filePath, verbose)
 	if os.IsNotExist(err) {
-		return defaultNameForNugetSource(urlOrName), nil
+		return defaultNameForNugetSource(urlOrName, verbose), nil
 	}
 
 	if err != nil {
@@ -90,10 +112,13 @@ func GetNameForNugetSource(filePath string, urlOrName string) (string, error) {
 		}
 	}
 
-	return defaultNameForNugetSource(urlOrName), nil
+	return defaultNameForNugetSource(urlOrName, verbose), nil
 }
 
-func defaultNameForNugetSource(urlOrName string) string {
+func defaultNameForNugetSource(urlOrName string, verbose bool) string {
+	if verbose {
+		fmt.Println("Generating default name for NuGet source:", urlOrName)
+	}
 	u, err := url.Parse(urlOrName)
 	if err != nil {
 		return urlOrName
@@ -104,9 +129,15 @@ func defaultNameForNugetSource(urlOrName string) string {
 	return u.Host + path
 }
 
-func AddSourceToNugetConfig(filePath string, name string, url string) error {
-	doc, err := readNugetConfig(filePath)
-	if err != nil {
+func AddSourceToNugetConfig(filePath string, name string, url string, verbose bool) error {
+	if verbose {
+		fmt.Println("Adding source to NuGet config:", filePath, "Name:", name, "URL:", url)
+	}
+
+	doc, err := readNugetConfig(filePath, verbose)
+	if os.IsNotExist(err) {
+		doc = etree.NewDocument()
+	} else if err != nil {
 		return err
 	}
 
@@ -128,12 +159,18 @@ func AddSourceToNugetConfig(filePath string, name string, url string) error {
 
 	sources.AddChild(source)
 
-	return writeNugetConfig(filePath, doc)
+	return writeNugetConfig(filePath, doc, verbose)
 }
 
-func AddPackageSourceCredentialsToNugetConfig(filePath string, name string, username string, password string) error {
-	doc, err := readNugetConfig(filePath)
-	if err != nil {
+func AddPackageSourceCredentialsToNugetConfig(filePath string, name string, username string, password string, verbose bool) error {
+	if verbose {
+		fmt.Println("Adding package source credentials to NuGet config:", filePath, "Name:", name)
+	}
+
+	doc, err := readNugetConfig(filePath, verbose)
+	if os.IsNotExist(err) {
+		doc = etree.NewDocument()
+	} else if err != nil {
 		return err
 	}
 
@@ -173,12 +210,17 @@ func AddPackageSourceCredentialsToNugetConfig(filePath string, name string, user
 	passwordElement.CreateAttr("value", password)
 	packageSource.AddChild(passwordElement)
 
-	return writeNugetConfig(filePath, doc)
+	return writeNugetConfig(filePath, doc, verbose)
 }
 
-func AddMappingToNugetConfig(filePath string, name string, pattern string) error {
-	doc, err := readNugetConfig(filePath)
-	if err != nil {
+func AddMappingToNugetConfig(filePath string, name string, pattern string, verbose bool) error {
+	if verbose {
+		fmt.Println("Adding mapping to NuGet config:", filePath, "Name:", name, "Pattern:", pattern)
+	}
+	doc, err := readNugetConfig(filePath, verbose)
+	if os.IsNotExist(err) {
+		doc = etree.NewDocument()
+	} else if err != nil {
 		return err
 	}
 
@@ -213,12 +255,16 @@ func AddMappingToNugetConfig(filePath string, name string, pattern string) error
 
 	packageSource.AddChild(mapping)
 
-	return writeNugetConfig(filePath, doc)
+	return writeNugetConfig(filePath, doc, verbose)
 }
 
 // ReadNugetConfig reads a NuGet config file and returns the XML document.
-func readNugetConfig(filePath string) (*etree.Document, error) {
-	if _, err := os.Stat(filePath); err != nil {
+func readNugetConfig(filePath string, verbose bool) (*etree.Document, error) {
+	if verbose {
+		fmt.Println("Reading NuGet config from file:", filePath)
+	}
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return nil, err
 	}
 
@@ -230,7 +276,11 @@ func readNugetConfig(filePath string) (*etree.Document, error) {
 	return doc, nil
 }
 
-func writeNugetConfig(filePath string, doc *etree.Document) error {
+func writeNugetConfig(filePath string, doc *etree.Document, verbose bool) error {
+	if verbose {
+		fmt.Println("Writing NuGet config to file:", filePath)
+	}
+
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err

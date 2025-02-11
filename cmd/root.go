@@ -14,6 +14,7 @@ var rootCmd = &cobra.Command{
 
 var (
 	Target string
+	Verbose bool
 )
 
 func Execute() {
@@ -26,6 +27,7 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&Target, "target", "t", "", "target config file (default is $HOME/.nuget/nuget.config)")
+	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
 
 	rootCmd.AddCommand(addSourceCmd)
 	rootCmd.AddCommand(addMappingCmd)
