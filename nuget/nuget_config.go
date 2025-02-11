@@ -129,6 +129,27 @@ func defaultNameForNugetSource(urlOrName string, verbose bool) string {
 	return u.Host + path
 }
 
+func InitializeEmptyNugetConfig(filePath string, verbose bool) error {
+	if verbose {
+		fmt.Println("Initializing empty NuGet config:", filePath)
+	}
+
+	doc := etree.NewDocument()
+	configuration := doc.FindElement("configuration")
+	if configuration == nil {
+		configuration = doc.CreateElement("configuration")
+	}
+
+	packageSources := configuration.FindElement("packageSources")
+	if packageSources == nil {
+		packageSources = etree.NewElement("packageSources")
+		packageSources.AddChild(doc.CreateText(""))
+		configuration.AddChild(packageSources)
+	}
+
+	return writeNugetConfig(filePath, doc, verbose)
+}
+
 func AddSourceToNugetConfig(filePath string, name string, url string, verbose bool) error {
 	if verbose {
 		fmt.Println("Adding source to NuGet config:", filePath, "Name:", name, "URL:", url)

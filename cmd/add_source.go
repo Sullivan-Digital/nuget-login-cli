@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"nuget-login-cli/nuget"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -22,6 +23,11 @@ var addSourceCmd = &cobra.Command{
 		var configPath = nuget.GetNugetConfigPath(Target, Verbose)
 		fmt.Printf("Using config file: %s\n", configPath)
 
+		configExists := true
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			configExists = false
+		}
+
 		var err error
 		var name string
 		var sourceUrl string
@@ -34,6 +40,16 @@ var addSourceCmd = &cobra.Command{
 		} else {
 			name = args[0]
 			sourceUrl = args[1]
+		}
+		
+		if Defaults && configExists {
+			fmt.Println("Warning - config already exists, default sources and mappings will not be added")
+		}
+
+		if Defaults && !configExists {
+			fmt.Println("Adding default sources and mappings to new config file")
+			nuget.AddSourceToNugetConfig(configPath, "nuget.org", "https://api.nuget.org/v3/index.json", Verbose)
+			nuget.AddMappingToNugetConfig(configPath, "nuget.org", "*", Verbose)
 		}
 
 		fmt.Printf("Adding source %s to %s..\n", name, sourceUrl)
