@@ -39,15 +39,25 @@ func GetNugetConfigPath(hint string, verbose bool) string {
 	if verbose {
 		fmt.Println("Getting NuGet config path with hint:", hint)
 	}
+	
 	if hint == "" {
 		return getDefaultNugetConfigPath(verbose)
 	}
 
 	if isPointingToFile(hint, verbose) {
+		absPath, err := filepath.Abs(hint)
+		if err == nil {
+			return absPath
+		}
 		return hint
 	}
 
-	return filepath.Join(hint, defaultNugetConfigFileName)
+	absPath, err := filepath.Abs(filepath.Join(hint, defaultNugetConfigFileName))
+	if err != nil {
+		return filepath.Join(hint, defaultNugetConfigFileName)
+	}
+	
+	return absPath
 }
 
 func getDefaultNugetConfigPath(verbose bool) string {
